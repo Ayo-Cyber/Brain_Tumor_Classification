@@ -1,0 +1,7 @@
+data:
+  batch_size: 32
+  img_size: [224, 224]
+  
+model:
+  epochs: 10
+  learning_rate: 0.001

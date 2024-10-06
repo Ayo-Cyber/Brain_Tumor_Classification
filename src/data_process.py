@@ -1,40 +1,57 @@
 import os
 import tensorflow as tf
+from loading import load_data  # Assuming your loading function is in data_loading.py
 
+# Parameters
 BATCH_SIZE = 32
-IMG_SIZE = (224, 224)  # Resize images to this size
-DATA_DIR = "data/raw"  # Path to your data directory
-PROCESSED_DATA_DIR = "data/processed"  # Path for processed data
+IMG_SIZE = (224, 224)  # ResNet and similar models typically use 224x224 images
+PROCESSED_DATA_DIR = "data/processed"  # Path to save processed data
+DATA_DIR = "data/raw"  # Path where raw data is stored
 
-def load_and_split_data(data_dir, img_size, batch_size):
+def serialize_example(image, label):
     """
-    Load and split the dataset into train, validation, and test sets.
+    Create a tf.train.Example from image and label.
     """
-    dataset = tf.keras.preprocessing.image_dataset_from_directory(
-        data_dir,
-        image_size=img_size,
-        batch_size=batch_size,
-        label_mode='categorical',  # One-hot encoded labels for multi-class
-        seed=42,
-        validation_split=0.2,  # Use 20% for validation
-        subset='training'  # This will be the training dataset
-    )
+    # Cast image to uint8
+    image = tf.cast(image * 255.0, tf.uint8)  # Assuming image is in [0, 1], scale to [0, 255]
 
-    val_dataset = tf.keras.preprocessing.image_dataset_from_directory(
-        data_dir,
-        image_size=img_size,
-        batch_size=batch_size,
-        label_mode='categorical',
-        seed=42,
-        validation_split=0.2,
-        subset='validation'  # This will be the validation dataset
-    )
+    feature = {
+        'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[tf.io.encode_jpeg(image).numpy()])),
+        'label': tf.train.Feature(int64_list=tf.train.Int64List(value=[label.numpy()]))
+    }
+    return tf.train.Example(features=tf.train.Features(feature=feature))
 
-    # If you have a separate test dataset, load it here
-    # For now, we'll keep it as validation just for demonstration
-    test_dataset = val_dataset  # Replace this if you have a separate test dataset
 
-    return dataset, val_dataset, test_dataset
+def save_datasets(train_dataset, val_dataset, test_dataset):
+    """
+    Save the datasets to TFRecord format.
+    """
+    if not os.path.exists(PROCESSED_DATA_DIR):
+        os.makedirs(PROCESSED_DATA_DIR)
+
+    # Save training dataset
+    with tf.io.TFRecordWriter(os.path.join(PROCESSED_DATA_DIR, 'train_dataset.tfrecord')) as writer:
+        for image_batch, label_batch in train_dataset:
+            for i in range(len(label_batch)):
+                tf_example = serialize_example(image_batch[i], label_batch[i])
+                writer.write(tf_example.SerializeToString())
+
+    # Save validation dataset
+    with tf.io.TFRecordWriter(os.path.join(PROCESSED_DATA_DIR, 'val_dataset.tfrecord')) as writer:
+        for image_batch, label_batch in val_dataset:
+            for i in range(len(label_batch)):
+                tf_example = serialize_example(image_batch[i], label_batch[i])
+                writer.write(tf_example.SerializeToString())
+
+    # Save test dataset
+    with tf.io.TFRecordWriter(os.path.join(PROCESSED_DATA_DIR, 'test_dataset.tfrecord')) as writer:
+        for image_batch, label_batch in test_dataset:
+            for i in range(len(label_batch)):
+                tf_example = serialize_example(image_batch[i], label_batch[i])
+                writer.write(tf_example.SerializeToString())
+
+    print("Datasets saved successfully in TFRecord format!")
+
 
 def prepare_dataset(dataset):
     """
@@ -43,23 +60,9 @@ def prepare_dataset(dataset):
     dataset = dataset.map(lambda x, y: (x / 255.0, y))  # Normalize images to [0, 1]
     return dataset.batch(BATCH_SIZE)
 
-def save_datasets(train_dataset, val_dataset, test_dataset):
-    """
-    Save the datasets to TFRecord files.
-    """
-    if not os.path.exists(PROCESSED_DATA_DIR):
-        os.makedirs(PROCESSED_DATA_DIR)
-    
-    # Example of saving datasets (you can save in other formats as well)
-    train_dataset.save(os.path.join(PROCESSED_DATA_DIR, 'train_dataset'))
-    val_dataset.save(os.path.join(PROCESSED_DATA_DIR, 'val_dataset'))
-    test_dataset.save(os.path.join(PROCESSED_DATA_DIR, 'test_dataset'))
-
-    print("Datasets saved successfully!")
-
 def main():
-    # Load and prepare the data
-    train_dataset, val_dataset, test_dataset = load_and_split_data(DATA_DIR, IMG_SIZE, BATCH_SIZE)
+    # Load data from the other file
+    train_dataset, val_dataset, test_dataset = load_data(DATA_DIR, IMG_SIZE, BATCH_SIZE)
     print("Data loaded successfully!")
 
     # Prepare datasets (normalization and batching)

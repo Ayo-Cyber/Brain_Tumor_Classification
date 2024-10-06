@@ -1,24 +1,27 @@
 stages:
-  prepare_data:
-    cmd: python src/data_process.py
+  load_data:
+    cmd: python src/loading.py
     deps:
+      - src/loading.py
       - data/raw
-      - src/data_process.py
     outs:
-      - data/processed
+      - data/processed/train_dataset.h5
+      - data/processed/val_dataset.h5
+      - data/processed/test_dataset.h5
+
 
   train_model:
     cmd: python src/train.py
     deps:
-      - src/model.py
-      - data/processed
+      - data/processed/train_dataset
+      - data/processed/val_dataset
+      - model.py
+      - params.yaml
     outs:
-      - model_output
+      - model.h5
 
-  # evaluate_model:
-  #   cmd: python evaluate.py
-  #   deps:
-  #     - model_output
-  #     - test_dataset
-  #   metrics:
-  #     - metrics.json
+  evaluate_model:
+    cmd: python src/train.py  # Update this to a dedicated evaluation script if necessary
+    deps:
+      - model.h5
+      - data/processed/test_dataset
