@@ -1,13 +1,11 @@
-import os
 import tensorflow as tf
-
 
 BATCH_SIZE = 32
 IMAGE_SIZE = (224, 224)
 SEED = 42
 
-
 def data_generator(train_dir, test_dir):
+    # Training data generator
     train_generator = tf.keras.preprocessing.image_dataset_from_directory(
         train_dir,
         image_size=IMAGE_SIZE,
@@ -16,6 +14,7 @@ def data_generator(train_dir, test_dir):
         seed=SEED
     )
 
+    # Validation data generator
     val_generator = tf.keras.preprocessing.image_dataset_from_directory(
         test_dir,
         image_size=IMAGE_SIZE,
@@ -26,6 +25,7 @@ def data_generator(train_dir, test_dir):
         seed=SEED
     )
 
+    # Test data generator
     test_generator = tf.keras.preprocessing.image_dataset_from_directory(
         test_dir,
         image_size=IMAGE_SIZE,
