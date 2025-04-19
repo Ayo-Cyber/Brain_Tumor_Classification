@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/admin/Documents/GitHub/Brain_Tumor_Classification/mlruns/0/031d56a13aa4432fa7b89c6379bb886c/artifacts
+end_time: 1744986773089
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 031d56a13aa4432fa7b89c6379bb886c
+run_name: Model Evaluation
+run_uuid: 031d56a13aa4432fa7b89c6379bb886c
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1744986773067
+status: 4
+tags: []
+user_id: admin
