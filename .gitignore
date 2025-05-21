@@ -2,3 +2,4 @@ venv/
 Data/
 .qodo
 data/
+mlruns/
