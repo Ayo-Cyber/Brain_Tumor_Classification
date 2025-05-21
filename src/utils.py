@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import os
 import cv2
+import boto3
 import streamlit as st
 from tensorflow.keras.preprocessing import image as keras_image
 from tensorflow.keras.applications.resnet50 import preprocess_input
@@ -14,6 +15,34 @@ from tensorflow.keras.models import Model
 BATCH_SIZE = 32
 IMAGE_SIZE = (224, 224)
 SEED = 42
+BUCKET_NAME = "airlab-brain-tumor-model-artifacts"
+s3_client = boto3.client("s3")
+
+
+def get_latest_model_artifact_from_bucket(client, bucket_name: str):
+    response = client.list_objects_v2(
+    Bucket=BUCKET_NAME
+    )
+    if 'Contents' not in response:
+        return None  # No objects found
+
+    # Find the object with the latest LastModified timestamp
+    latest_object = max(response['Contents'], key=lambda obj: obj['LastModified'])
+
+    return {
+        'Key': latest_object['Key'],
+        'LastModified': latest_object['LastModified']
+    }
+
+def download_artifact_from_bucket(client, bucket_name: str, key: str):
+    # download the model artifact from s3
+    response = client.download_file(
+        Bucket=bucket_name,
+        Key=key,
+        Filename=f"{key}"
+    )
+    return "file downloaded from bucket"
+
 
 def data_generator(train_dir, test_dir):
     # Training data generator
@@ -136,7 +165,11 @@ def load_and_preprocess_image(img_path):
 @st.cache_resource
 def load_selected_model():
     try:
-        model_path = "model_artifacts/final_model_20250418_134412.keras"
+        get_latest_object_key = get_latest_model_artifact_from_bucket(s3_client, BUCKET_NAME).get("Key")
+        print(f"Key is {get_latest_object_key}")
+        download_artifact_from_bucket(s3_client, BUCKET_NAME, get_latest_object_key)
+
+        model_path = f"{get_latest_object_key}"
         model = load_model(model_path)
         return model
     except Exception as e:

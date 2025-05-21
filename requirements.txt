@@ -6,4 +6,4 @@ numpy
 matplotlib
 seaborn
 opencv-python
-
+boto3
