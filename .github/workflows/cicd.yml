@@ -1,0 +1,72 @@
+name: "CICD to build and push to DockerHub --> Deploy on render"
+
+on:
+  push:
+    branches:
+      - emmanuel
+
+permissions:
+  contents: 'read'
+  id-token: 'write'
+
+jobs:
+  push_to_dockerhub:
+    name: "Push to dockerhub"
+    runs-on: ubuntu-latest
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest.
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      # Checkout the repository to the GitHub Actions runner
+      - name: checkout from repository
+        uses: actions/checkout@v4
+
+      - name: "setup docker"
+        uses:  docker/setup-buildx-action@v3
+
+
+        # login to dockerhub with username and password
+      - name: login to  dockerhub
+        run: docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD 
+        working-directory: .
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: build docker image
+        run: docker build -t brain_tumor .
+        working-directory: .
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: push to dockerhub 
+        run: docker push $DOCKERHUB_USERNAME/$REPO_NAME
+        working-directory: .
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+          REPO_NAME: brain_tumor
+
+  
+  deploy_image:
+    name: "Deploy images to render"
+    needs: push_to_dockerhub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: install render cli
+        run: |
+          curl -L https://github.com/render-oss/cli/releases/download/v1.1.0/cli_1.1.0_linux_amd64.zip -o render.zip
+          unzip render.zip
+          sudo mv cli_v1.1.0 /usr/local/bin/render
+
+      - name: create-render-deployment
+        run: render deploys create ${{ secrets.RENDER_SERVICE_ID }} --output json --confirm
+        env: 
+          RENDER_APIKEY: ${{ secrets.RENDER_APIKEY }}
