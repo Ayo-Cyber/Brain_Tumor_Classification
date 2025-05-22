@@ -37,11 +37,12 @@ jobs:
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: build docker image
-        run: docker build -t brain_tumor .
+        run: docker build -t $DOCKERHUB_USERNAME/$REPO_NAME .
         working-directory: .
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+          REPO_NAME: brain_tumor
 
       - name: push to dockerhub 
         run: docker push $DOCKERHUB_USERNAME/$REPO_NAME
