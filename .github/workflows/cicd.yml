@@ -68,7 +68,7 @@ jobs:
           sudo mv cli_v1.1.0 /usr/local/bin/render
       
       - name: list render services
-        run: render services
+        run: render services --output json --confirm
         env: 
           RENDER_API_KEY: ${{ secrets.RENDER_APIKEY }}
 
