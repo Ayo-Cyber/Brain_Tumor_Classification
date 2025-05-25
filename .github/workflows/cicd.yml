@@ -3,7 +3,7 @@ name: "CICD to build and push to DockerHub --> Deploy on render"
 on:
   push:
     branches:
-      - disabled
+      - emmanuel
 
 permissions:
   contents: 'read'
@@ -35,44 +35,58 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+      
+      - name: Auth to GCR
+        run: gcloud auth configure-docker $GCR_REGION-docker.pkg.dev
+        env:
+          GCR_REGION: us-central1
 
       - name: build docker image
-        run: docker build -t $DOCKERHUB_USERNAME/$REPO_NAME .
+        run: docker build -t $GCR_REGION-docker.pkg.dev/$PROJECT/$REPO/$IMG .
         working-directory: .
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
           REPO_NAME: brain_tumor
+          GCR_REGION: us-central1
+          PROJECT: tst-proj-456315
+          REPO: brain-tumor
+          IMG: brain
 
-      - name: push to dockerhub 
-        run: docker push $DOCKERHUB_USERNAME/$REPO_NAME
+      - name: push to gcr 
+        run: docker push $GCR_REGION-docker.pkg.dev/$PROJECT/$REPO/$IMG:latest
         working-directory: .
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
           REPO_NAME: brain_tumor
+          GCR_REGION: us-central1
+          PROJECT: tst-proj-456315
+          REPO: brain-tumor
+          IMG: brain
 
   
   deploy_image:
-    name: "Deploy images to render"
+    name: "Deploy images to gcp"
     needs: push_to_dockerhub
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: install render cli
-        run: |
-          curl -L https://github.com/render-oss/cli/releases/download/v1.1.0/cli_1.1.0_linux_amd64.zip -o render.zip
-          unzip render.zip
-          sudo mv cli_v1.1.0 /usr/local/bin/render
+      - name: authenticate to GCP
+        uses: 'google-github-actions/auth@v2'
+        with:
+          project_id: tst-proj-456315
+          credentials_json: ${{ secrets.GOOGLE_CRED }}
       
-      - name: list render services
-        run: render services --output json --confirm
-        env: 
-          RENDER_API_KEY: ${{ secrets.RENDER_APIKEY }}
-
-      - name: create-render-deployment
-        run: render deploys create ${{ secrets.RENDER_SERVICE_ID }} --output json --confirm
-        env: 
-          RENDER_API_KEY: ${{ secrets.RENDER_APIKEY }}
+      - name: Deploy cloud run
+        run : |
+          gcloud run deploy $SVC_NAME --image $GCR_REGION-docker.pkg.dev/$PROJECT/$REPO/$IMG:latest --region $GCR_REGION --platform managed --allow-unauthenticated
+        env:
+          SVC_NAME: brain-tumor
+          GCR_REGION: us-central1
+          PROJECT: tst-proj-456315
+          REPO: brain-tumor
+          IMG: brain
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CRED }}
