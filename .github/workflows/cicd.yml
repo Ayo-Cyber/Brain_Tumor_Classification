@@ -42,7 +42,13 @@ jobs:
       #   env:
       #     DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       #     DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
-      
+      - name: authenticate to GCP
+        uses: 'google-github-actions/auth@v2'
+        with:
+          project_id: tst-proj-456315
+          credentials_json: ${{ secrets.GOOGLE_CRED }}
+
+
       - name: Auth to GCR
         run: gcloud auth configure-docker $GCR_REGION-docker.pkg.dev
         env:
