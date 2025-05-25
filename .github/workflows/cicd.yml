@@ -10,7 +10,7 @@ permissions:
   id-token: 'write'
 
 jobs:
-  push_to_dockerhub:
+  push_to_gcr:
     name: "Push to dockerhub"
     runs-on: ubuntu-latest
 
@@ -26,6 +26,13 @@ jobs:
 
       - name: "setup docker"
         uses:  docker/setup-buildx-action@v3
+      
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          version: '>= 363.0.0'
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CRED }}
 
 
         # login to dockerhub with username and password
@@ -47,7 +54,6 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
-          REPO_NAME: brain_tumor
           GCR_REGION: us-central1
           PROJECT: tst-proj-456315
           REPO: brain-tumor
@@ -59,7 +65,6 @@ jobs:
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
-          REPO_NAME: brain_tumor
           GCR_REGION: us-central1
           PROJECT: tst-proj-456315
           REPO: brain-tumor
@@ -68,7 +73,7 @@ jobs:
   
   deploy_image:
     name: "Deploy images to gcp"
-    needs: push_to_dockerhub
+    needs: push_to_gcr
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
