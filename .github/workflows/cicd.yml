@@ -36,12 +36,12 @@ jobs:
 
 
         # login to dockerhub with username and password
-      - name: login to  dockerhub
-        run: docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD 
-        working-directory: .
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+      # - name: login to  dockerhub
+      #   run: docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD 
+      #   working-directory: .
+      #   env:
+      #     DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
       
       - name: Auth to GCR
         run: gcloud auth configure-docker $GCR_REGION-docker.pkg.dev
