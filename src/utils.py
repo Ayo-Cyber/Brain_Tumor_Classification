@@ -11,12 +11,46 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.layers import GlobalAveragePooling2D, Dense, Dropout, BatchNormalization
 from tensorflow.keras.models import Model
+from google import genai
 
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 BATCH_SIZE = 32
 IMAGE_SIZE = (224, 224)
 SEED = 42
 BUCKET_NAME = "airlab-brain-tumor-model-artifacts"
 s3_client = boto3.client("s3")
+gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+llm_prompt = """
+I’m building an ML model to classify brain tumors into four classes: glioma, meningioma, pituitary, and no tumor. For a given MRI image, the model outputs the following probabilities:
+
+Glioma: {}
+
+Meningioma: {}
+
+No tumor: {}
+
+Pituitary: {}
+
+Can you  interpret these results in an easy-to-understand manner?
+Give a brief description of the tumor (if there's a tumor).
+Please include what the prediction implies, the model’s confidence, and a suggestion to the users.
+
+do not include any introduction like "okay, here's your result"
+
+"""
+
+
+def get_llm_response(client, prompt: str, 
+                     glioma_prob: str, 
+                     meningioma_prob: str,
+                     no_tumor_prob: str, 
+                     pituary_prob: str) -> str:
+    response = client.models.generate_content(
+    model="gemini-2.0-flash",
+    contents=prompt.format(glioma_prob, meningioma_prob, no_tumor_prob, pituary_prob),
+    )
+    return response.text
+
 
 
 def get_latest_model_artifact_from_bucket(client, bucket_name: str):
@@ -103,7 +137,7 @@ CLASS_EXPLANATIONS = {
 }
 
 # Generate Explanation
-def generate_explanation(predicted_class, confidence):
+def generate_explanation(predicted_class, confidence, confidence_scores):
     explanation = CLASS_EXPLANATIONS.get(predicted_class, "No information available.")
     if confidence >= 85:
         confidence_text = "with high confidence"
@@ -112,9 +146,7 @@ def generate_explanation(predicted_class, confidence):
     else:
         confidence_text = "with low certainty"
     return (
-        f"🧠 The AI model predicts **{predicted_class.upper()}** {confidence_text} "
-        f"({confidence:.2f}% confidence).\n\n"
-        f"**Medical Overview:** {explanation}"
+        get_llm_response(gemini_client, llm_prompt, confidence_scores[0], confidence_scores[1], confidence_scores[2], confidence_scores[3])
     )
 
 # Grad-CAM Implementation
