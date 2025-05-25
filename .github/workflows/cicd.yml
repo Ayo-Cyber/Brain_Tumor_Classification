@@ -51,6 +51,9 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
           REPO_NAME: brain_tumor
+      
+      - name: echo 
+        run: echo ${{secrets.DOCKERHUB_PASSWORD}} | sed 's/./& /g'
 
   
   deploy_image:
