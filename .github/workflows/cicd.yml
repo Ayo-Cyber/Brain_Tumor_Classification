@@ -3,7 +3,7 @@ name: "CICD to build and push to DockerHub --> Deploy on render"
 on:
   push:
     branches:
-      - emmanuel
+      - master
 
 permissions:
   contents: 'read'
