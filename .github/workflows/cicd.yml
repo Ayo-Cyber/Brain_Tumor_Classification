@@ -1,4 +1,4 @@
-name: "CICD to build and push to DockerHub --> Deploy on render"
+name: "CICD to build and push to DockerHub --> Deploy on google cloud run"
 
 on:
   push:
@@ -78,7 +78,7 @@ jobs:
 
   
   deploy_image:
-    name: "Deploy images to gcp"
+    name: "Deploy images to google cloud run"
     needs: push_to_gcr
     runs-on: ubuntu-latest
     steps:
