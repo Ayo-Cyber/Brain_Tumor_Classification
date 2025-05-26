@@ -83,7 +83,7 @@ if uploaded_file is not None:
                         st.image(heatmap_overlay, caption="Grad-CAM Overlay", use_container_width=True)
 
                     with expl_col:
-                        st.info(generate_explanation(predicted_class, predicted_confidence))
+                        st.info(generate_explanation(predicted_class, predicted_confidence, confidence_scores))
 
         except Exception as e:
             st.error(f"🚨 Prediction failed: {e}")

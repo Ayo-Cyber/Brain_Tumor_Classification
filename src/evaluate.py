@@ -64,9 +64,9 @@ def evaluate_model(model_path, test_dir=TEST_DIR):
         conf_matrix = confusion_matrix(true_labels, pred_labels)
 
         # Log classification report and confusion matrix as artifacts in MLflow
-        with open("classification_report.txt", "w") as f:
+        with open("reports/classification_report.txt", "w") as f:
             f.write(class_report)
-        with open("confusion_matrix.txt", "w") as f:
+        with open("reports/confusion_matrix.txt", "w") as f:
             f.write(str(conf_matrix))
 
         # Log the confusion matrix and classification report as MLflow artifacts
