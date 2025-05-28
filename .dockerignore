@@ -1,0 +1,12 @@
+model_artifacts
+mlruns
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+.env
+.git
+.gitignore
+Dockerfile

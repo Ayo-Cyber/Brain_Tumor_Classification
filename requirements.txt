@@ -6,4 +6,5 @@ numpy
 matplotlib
 seaborn
 opencv-python
-
+boto3
+google-genai

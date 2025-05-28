@@ -1,0 +1,103 @@
+name: "CICD to build and push to DockerHub --> Deploy on google cloud run"
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: 'read'
+  id-token: 'write'
+
+jobs:
+  push_to_gcr:
+    name: "Push to dockerhub"
+    runs-on: ubuntu-latest
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest.
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      # Checkout the repository to the GitHub Actions runner
+      - name: checkout from repository
+        uses: actions/checkout@v4
+
+      - name: "setup docker"
+        uses:  docker/setup-buildx-action@v3
+      
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          version: '>= 363.0.0'
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CRED }}
+
+
+        # login to dockerhub with username and password
+      # - name: login to  dockerhub
+      #   run: docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD 
+      #   working-directory: .
+      #   env:
+      #     DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: authenticate to GCP
+        uses: 'google-github-actions/auth@v2'
+        with:
+          project_id: tst-proj-456315
+          credentials_json: ${{ secrets.GOOGLE_CRED }}
+
+
+      - name: Auth to GCR
+        run: gcloud auth configure-docker $GCR_REGION-docker.pkg.dev
+        env:
+          GCR_REGION: us-central1
+
+      - name: build docker image
+        run: docker build -t $GCR_REGION-docker.pkg.dev/$PROJECT/$REPO/$IMG .
+        working-directory: .
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+          GCR_REGION: us-central1
+          PROJECT: tst-proj-456315
+          REPO: brain-tumor
+          IMG: brain
+
+      - name: push to gcr 
+        run: docker push $GCR_REGION-docker.pkg.dev/$PROJECT/$REPO/$IMG:latest
+        working-directory: .
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+          GCR_REGION: us-central1
+          PROJECT: tst-proj-456315
+          REPO: brain-tumor
+          IMG: brain
+
+  
+  deploy_image:
+    name: "Deploy images to google cloud run"
+    needs: push_to_gcr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: authenticate to GCP
+        uses: 'google-github-actions/auth@v2'
+        with:
+          project_id: tst-proj-456315
+          credentials_json: ${{ secrets.GOOGLE_CRED }}
+      
+      - name: Deploy cloud run
+        run : |
+          gcloud run deploy $SVC_NAME --image $GCR_REGION-docker.pkg.dev/$PROJECT/$REPO/$IMG:latest --region $GCR_REGION --platform managed --allow-unauthenticated
+        env:
+          SVC_NAME: brain-tumor
+          GCR_REGION: us-central1
+          PROJECT: tst-proj-456315
+          REPO: brain-tumor
+          IMG: brain
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CRED }}

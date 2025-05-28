@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import os
 import cv2
+import boto3
 import streamlit as st
 from tensorflow.keras.preprocessing import image as keras_image
 from tensorflow.keras.applications.resnet50 import preprocess_input
@@ -10,10 +11,72 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.layers import GlobalAveragePooling2D, Dense, Dropout, BatchNormalization
 from tensorflow.keras.models import Model
+from google import genai
 
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 BATCH_SIZE = 32
 IMAGE_SIZE = (224, 224)
 SEED = 42
+BUCKET_NAME = "airlab-brain-tumor-model-artifacts"
+s3_client = boto3.client("s3")
+gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+llm_prompt = """
+I’m building an ML model to classify brain tumors into four classes: glioma, meningioma, pituitary, and no tumor. For a given MRI image, the model outputs the following probabilities:
+
+Glioma: {}
+
+Meningioma: {}
+
+No tumor: {}
+
+Pituitary: {}
+
+Can you  interpret these results in an easy-to-understand manner?
+Give a brief description of the tumor (if there's a tumor).
+Please include what the prediction implies, the model’s confidence, and a suggestion to the users.
+
+do not include any introduction like "okay, here's your result"
+
+"""
+
+
+def get_llm_response(client, prompt: str, 
+                     glioma_prob: str, 
+                     meningioma_prob: str,
+                     no_tumor_prob: str, 
+                     pituary_prob: str) -> str:
+    response = client.models.generate_content(
+    model="gemini-2.0-flash",
+    contents=prompt.format(glioma_prob, meningioma_prob, no_tumor_prob, pituary_prob),
+    )
+    return response.text
+
+
+
+def get_latest_model_artifact_from_bucket(client, bucket_name: str):
+    response = client.list_objects_v2(
+    Bucket=BUCKET_NAME
+    )
+    if 'Contents' not in response:
+        return None  # No objects found
+
+    # Find the object with the latest LastModified timestamp
+    latest_object = max(response['Contents'], key=lambda obj: obj['LastModified'])
+
+    return {
+        'Key': latest_object['Key'],
+        'LastModified': latest_object['LastModified']
+    }
+
+def download_artifact_from_bucket(client, bucket_name: str, key: str):
+    # download the model artifact from s3
+    response = client.download_file(
+        Bucket=bucket_name,
+        Key=key,
+        Filename=f"{key}"
+    )
+    return "file downloaded from bucket"
+
 
 def data_generator(train_dir, test_dir):
     # Training data generator
@@ -74,7 +137,7 @@ CLASS_EXPLANATIONS = {
 }
 
 # Generate Explanation
-def generate_explanation(predicted_class, confidence):
+def generate_explanation(predicted_class, confidence, confidence_scores):
     explanation = CLASS_EXPLANATIONS.get(predicted_class, "No information available.")
     if confidence >= 85:
         confidence_text = "with high confidence"
@@ -83,9 +146,7 @@ def generate_explanation(predicted_class, confidence):
     else:
         confidence_text = "with low certainty"
     return (
-        f"🧠 The AI model predicts **{predicted_class.upper()}** {confidence_text} "
-        f"({confidence:.2f}% confidence).\n\n"
-        f"**Medical Overview:** {explanation}"
+        get_llm_response(gemini_client, llm_prompt, confidence_scores[0], confidence_scores[1], confidence_scores[2], confidence_scores[3])
     )
 
 # Grad-CAM Implementation
@@ -136,7 +197,11 @@ def load_and_preprocess_image(img_path):
 @st.cache_resource
 def load_selected_model():
     try:
-        model_path = "model_artifacts/final_model_20250418_134412.keras"
+        get_latest_object_key = get_latest_model_artifact_from_bucket(s3_client, BUCKET_NAME).get("Key")
+        print(f"Key is {get_latest_object_key}")
+        download_artifact_from_bucket(s3_client, BUCKET_NAME, get_latest_object_key)
+
+        model_path = f"{get_latest_object_key}"
         model = load_model(model_path)
         return model
     except Exception as e:
