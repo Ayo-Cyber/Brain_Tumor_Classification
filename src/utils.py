@@ -73,7 +73,7 @@ def download_artifact_from_bucket(client, bucket_name: str, key: str):
     response = client.download_file(
         Bucket=bucket_name,
         Key=key,
-        Filename=f"{key}"
+        Filename=f"model_artefacts/{key}"
     )
     return "file downloaded from bucket"
 
@@ -201,7 +201,7 @@ def load_selected_model():
         print(f"Key is {get_latest_object_key}")
         download_artifact_from_bucket(s3_client, BUCKET_NAME, get_latest_object_key)
 
-        model_path = f"{get_latest_object_key}"
+        model_path = f"model_artefacts/{get_latest_object_key}"
         model = load_model(model_path)
         return model
     except Exception as e:
