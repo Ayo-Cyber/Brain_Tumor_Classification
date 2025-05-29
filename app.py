@@ -191,7 +191,7 @@ st.markdown("""
             🔗 Atunrase Ayomide
         </a>
         &
-        <a href="https://github.com/emmanuel" target="_blank" style="color: #4CAF50; text-decoration: none; margin-left: 20px;">
+        <a href="https://github.com/Techtacles" target="_blank" style="color: #4CAF50; text-decoration: none; margin-left: 20px;">
             🔗 Offisong Emmanuel
         </a>
     </p>
