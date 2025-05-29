@@ -3,4 +3,5 @@ Data/
 .qodo
 data/
 mlruns/
-model_artefacts/
+*.keras
+__pycache__

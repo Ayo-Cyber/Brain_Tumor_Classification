@@ -149,7 +149,9 @@ python src/evaluate.py --model_path model_artefacts/best_model.h5
 docker build -t brain-tumor-classifier .
 
 # Run container
-docker run -p 8501:8501 brain-tumor-classifier
+docker run -p 8501:8501 -e AWS_ACCESS_KEY_ID=<your-access-key> 
+-e AWS_SECRET_ACCESS_KEY=<your-secret-key>
+-e GEMINI_API_KEY=<your-gemini-api-key> brain-tumor-classifier
 ```
 
 ## 📈 Experiment Tracking
