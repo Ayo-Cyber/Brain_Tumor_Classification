@@ -205,9 +205,8 @@ def load_selected_model():
         if os.path.isfile(path_to_check):
             print(f"Model found locally... using model {path_to_check}")
             model_path = f"model_artefacts/{get_latest_object_key}"
-        else:
-            print(f"Downloading artifact {get_latest_object_key} from bucket {BUCKET_NAME} ")
-            download_artifact_from_bucket(s3_client, BUCKET_NAME, get_latest_object_key)
+        print(f"Downloading artifact {get_latest_object_key} from bucket {BUCKET_NAME} ")
+        download_artifact_from_bucket(s3_client, BUCKET_NAME, get_latest_object_key)
 
         model_path = f"model_artefacts/{get_latest_object_key}"
         model = load_model(model_path)
