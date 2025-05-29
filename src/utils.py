@@ -201,7 +201,7 @@ def load_selected_model():
         print(f"Key is {get_latest_object_key}")
         current_working_directory = os.getcwd()
         print(f"Current working directory is {current_working_directory}")
-        path_to_check = f"{current_working_directory}/{get_latest_object_key}"
+        path_to_check = f"{current_working_directory}/model_artefacts/{get_latest_object_key}"
         if os.path.isfile(path_to_check):
             print(f"Model found locally... using model {path_to_check}")
             model_path = f"model_artefacts/{get_latest_object_key}"
