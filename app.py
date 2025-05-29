@@ -139,24 +139,6 @@ elif page == "Image Diagnosis":
         
         # Load model
         model = load_selected_model()
-        
-        # # Display the original image and diagnosis results
-        # col1, col2 = st.columns(2)
-        
-        # with col1:
-        #     st.subheader("📷 Uploaded Image")
-        #     st.image(st.session_state.original_image, caption="Image for Grad-CAM Analysis", use_container_width=True)
-        
-        # with col2:
-        #     st.subheader("🧾 Diagnosis Result")
-        #     st.write(f"**Prediction:** {st.session_state.predicted_class}")
-        #     st.write(f"**Confidence:** {st.session_state.predicted_confidence:.2f}%")
-            
-        #     with st.expander("🔍 See All Class Confidence Scores"):
-        #         for idx, label in enumerate(CLASS_NAMES):
-        #             st.write(f"{label}: {st.session_state.confidence_scores[idx]*100:.2f}%")
-
-        # st.markdown("_____")
 
         # Grad-CAM Analysis
         st.subheader("🔍 Grad-CAM Visual Explanation")
