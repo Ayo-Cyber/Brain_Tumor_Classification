@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_extras.stoggle import stoggle
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import load_model
@@ -99,6 +100,8 @@ if page == "Home":
                     st.subheader("🧾 Diagnosis Result")
                     st.write(f"**Prediction:** {predicted_class}")
                     st.write(f"**Confidence:** {predicted_confidence:.2f}%")
+                    # stoggle("🔍 See All Class Confidence Scores", 
+                    #         "\n".join([f"{label}: {confidence_scores[idx]*100:.2f}%" for idx, label in enumerate(CLASS_NAMES)]),)
 
                     with st.expander("🔍 See All Class Confidence Scores"):
                         for idx, label in enumerate(CLASS_NAMES):
@@ -119,6 +122,10 @@ if page == "Home":
                 st.write(f"**Prediction:** {st.session_state.predicted_class}")
                 st.write(f"**Confidence:** {st.session_state.predicted_confidence:.2f}%")
 
+                with st.expander("🔍 See All Class Confidence Scores"):
+                        for idx, label in enumerate(CLASS_NAMES):
+                            st.write(f"{label}: {st.session_state.confidence_scores[idx]*100:.2f}%")
+
 elif page == "Image Diagnosis":
     st.title("🧠 AI Medical Image Diagnosis For NeuroDegenerative Diseases")
     st.write("Perform Explainable Image Diagnosis on Brain Scans")
@@ -127,7 +134,8 @@ elif page == "Image Diagnosis":
     # Check if we have an image from the Home page
     if (st.session_state.temp_path is not None and 
         st.session_state.predicted_class is not None and 
-        st.session_state.original_image is not None):
+        st.session_state.original_image is not None and 
+        st.session_state.img_for_overlay is not None and st.session_state.confidence_scores is not None):
         
         # Load model
         model = load_selected_model()
@@ -181,6 +189,7 @@ elif page == "Image Diagnosis":
             for key in st.session_state.keys():
                 del st.session_state[key]
             st.rerun()
+
 
 st.markdown("_____")
 st.markdown("""
