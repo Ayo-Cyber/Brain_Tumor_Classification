@@ -205,10 +205,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### 👥 Development Team
 Made with ❤️ by:
-- **[Atunrase Ayomide](https://github.com/atunrase)** - Lead ML Engineer
-- **[Emmanuel](https://github.com/emmanuel)** - AI Research Specialist
+- **[Atunrase Ayomide](https://github.com/Ayo-Cyber)** - AI/ML Engineer and Researcher
+- **[Offisong Emmanuel](https://github.com/Techtacles)** - Data Engineer and Devops Engineer
 
-*University of Lagos*
+*University of Lagos : Artificial Intelligence And Robotics Laboratory*
 
 ### 🌟 Special Thanks
 - Medical imaging research community
