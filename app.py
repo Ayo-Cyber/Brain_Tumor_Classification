@@ -1,5 +1,4 @@
 import streamlit as st
-from streamlit_extras.stoggle import stoggle
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import load_model
