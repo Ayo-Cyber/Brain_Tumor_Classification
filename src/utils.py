@@ -477,11 +477,13 @@ def save_report_to_streamlit(pdf_bytes, filename="neurological_diagnostic_report
     Returns:
         Streamlit download button
     """
-    
-    return st.download_button(
-        label="📄 Download Medical Report (PDF)",
-        data=pdf_bytes,
-        file_name=filename,
-        mime="application/pdf",
-        help="Click to download the complete diagnostic report as PDF"
-    )
+    if isinstance(pdf_bytes, bytes):
+        return st.download_button(
+            label="📄 Download Medical Report (PDF)",
+            data=pdf_bytes,
+            file_name=filename,
+            mime="application/pdf",
+            help="Click to download the complete diagnostic report as PDF"
+        )
+    else:
+        st.error("PDF data is not in bytes format. Cannot offer download.")

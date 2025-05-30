@@ -14,7 +14,7 @@ from src.utils import (generate_explanation ,
                               generate_medical_report_pdf,
                                 save_report_to_streamlit)
 import tempfile
-import datetime
+from datetime import datetime
 import os
 
 # Page Configuration
@@ -109,8 +109,6 @@ if page == "Home":
                     st.subheader("🧾 Diagnosis Result")
                     st.write(f"**Prediction:** {predicted_class}")
                     st.write(f"**Confidence:** {predicted_confidence:.2f}%")
-                    # stoggle("🔍 See All Class Confidence Scores", 
-                    #         "\n".join([f"{label}: {confidence_scores[idx]*100:.2f}%" for idx, label in enumerate(CLASS_NAMES)]),)
 
                     with st.expander("🔍 See All Class Confidence Scores"):
                         for idx, label in enumerate(CLASS_NAMES):
@@ -225,6 +223,7 @@ elif page == "Medical Report":
         st.markdown("---")
         st.subheader("📝 Report Information")
         
+
         with st.form("report_form"):
             col1, col2 = st.columns(2)
             
@@ -238,47 +237,54 @@ elif page == "Medical Report":
             
             # Form submission
             generate_report = st.form_submit_button("🔄 Generate Medical Report", type="primary")
-            
-            if generate_report:
-                with st.spinner("Generating comprehensive medical report..."):
-                    try:
-                        # Add additional notes to explanation if provided
-                        full_explanation = st.session_state.explanation
-                        if additional_notes.strip():
-                            full_explanation += f"\n\nAdditional Clinical Notes:\n{additional_notes}"
-                        
-                        pdf_bytes = generate_medical_report_pdf(
-                            original_image=st.session_state.original_image,
-                            heatmap_overlay=st.session_state.img_for_overlay,
-                            predicted_class=st.session_state.predicted_class,
-                            predicted_confidence=st.session_state.predicted_confidence,
-                            confidence_scores=st.session_state.confidence_scores,
-                            explanation_text=full_explanation,
-                            patient_name=patient_name if patient_name else "Anonymous Patient",
-                            doctor_name=doctor_name,
-                            report_id=report_id if report_id else None
-                        )
-                        
-                        # Store PDF in session state
-                        st.session_state.pdf_report = pdf_bytes
-                        
-                        st.success("✅ Medical report generated successfully!")
-                        
-                        # Provide download button
-                        safe_patient_name = patient_name.replace(' ', '_').replace('/', '_').replace('\\', '_')
-                        safe_condition = st.session_state.predicted_class.replace(' ', '_').replace('/', '_').replace('\\', '_')
-                        filename = f"neurological_report_{safe_patient_name}_{safe_condition}.pdf"
-                        
-                        save_report_to_streamlit(pdf_bytes, filename)
-                        
-                        # Show report details
-                        st.info(f"📄 Report generated for: {patient_name}")
-                        st.info(f"🏥 Institution: {doctor_name}")
-                        st.info(f"📅 Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
-                        
-                    except Exception as e:
-                        st.error(f"🚨 PDF generation failed: {e}")
-                        st.error("Please check if all required libraries are installed (reportlab)")
+
+
+        if generate_report:
+            with st.spinner("Generating comprehensive medical report..."):
+                try:
+                    # Add additional notes to explanation if provided
+                    full_explanation = st.session_state.explanation
+                    if additional_notes.strip():
+                        full_explanation += f"\n\nAdditional Clinical Notes:\n{additional_notes}"
+                    
+                    pdf_bytes = generate_medical_report_pdf(
+                        original_image=st.session_state.original_image,
+                        heatmap_overlay=st.session_state.img_for_overlay,
+                        predicted_class=st.session_state.predicted_class,
+                        predicted_confidence=st.session_state.predicted_confidence,
+                        confidence_scores=st.session_state.confidence_scores,
+                        explanation_text=full_explanation,
+                        patient_name=patient_name if patient_name else "Anonymous Patient",
+                        doctor_name=doctor_name,
+                        report_id=report_id if report_id else None
+                    )
+                    
+                    # Store PDF in session state
+                    st.session_state.pdf_report = pdf_bytes
+                    
+                    st.success("✅ Medical report generated successfully!")
+
+                    # Safe file name
+                    safe_patient_name = patient_name.replace(' ', '_').replace('/', '_').replace('\\', '_')
+                    safe_condition = st.session_state.predicted_class.replace(' ', '_').replace('/', '_').replace('\\', '_')
+                    filename = f"neurological_report_{safe_patient_name}_{safe_condition}.pdf"
+
+                    # Show report details
+                    st.info(f"📄 Report generated for: {patient_name}")
+                    st.info(f"🏥 Institution: {doctor_name}")
+                    st.info(f"📅 Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
+
+                except Exception as e:
+                    st.error(f"🚨 PDF generation failed: {e}")
+                    st.error("Please check if all required libraries are installed (reportlab)")
+
+        # --- DOWNLOAD BUTTON OUTSIDE FORM ---
+        if "pdf_report" in st.session_state:
+            st.download_button(
+                label="📥 Download PDF Report",
+                data=st.session_state.pdf_report,
+                mime="application/pdf"
+            )
     
     elif st.session_state.original_image is not None and st.session_state.predicted_class is not None:
         # Have basic analysis but missing Grad-CAM
@@ -297,7 +303,7 @@ elif page == "Medical Report":
             st.metric("Confidence Level", f"{st.session_state.predicted_confidence:.2f}%")
             
         if st.button("🔍 Go to Image Diagnosis"):
-            st.switch_page("Image Diagnosis")  # This might need adjustment based on your Streamlit version
+            st.switch_page("Image Diagnosis")  
     
     else:
         st.warning("⚠️ No diagnostic data available for report generation.")
