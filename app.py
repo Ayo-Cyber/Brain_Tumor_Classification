@@ -6,8 +6,15 @@ from PIL import Image
 import cv2
 from tensorflow.keras.applications.resnet50 import preprocess_input
 from tensorflow.keras.preprocessing import image as keras_image
-from src.utils import generate_explanation , CLASS_NAMES, grad_cam_overlay , load_and_preprocess_image , load_selected_model
+from src.utils import (generate_explanation ,
+                        CLASS_NAMES, 
+                        grad_cam_overlay ,
+                          load_and_preprocess_image ,
+                            load_selected_model,
+                              generate_medical_report_pdf,
+                                save_report_to_streamlit)
 import tempfile
+from datetime import datetime
 import os
 
 # Page Configuration
@@ -28,11 +35,13 @@ if 'confidence_scores' not in st.session_state:
     st.session_state.confidence_scores = None
 if 'original_image' not in st.session_state:
     st.session_state.original_image = None
+if 'explanation' not in st.session_state:
+    st.session_state.explanation = None
 
 # Sidebar
 with st.sidebar:
     st.title("Navigation")
-    page = st.sidebar.radio("Select Page", ["Home" , "Image Diagnosis"])
+    page = st.sidebar.radio("Select Page", ["Home" , "Image Diagnosis", "Medical Report"])
     dark_mode = st.toggle("Dark Mode")
 
 # Dark mode style
@@ -45,6 +54,7 @@ if dark_mode:
     """, unsafe_allow_html=True)
 
 if page == "Home":
+    # session state for home pag
     # Header
     st.title("🧠 AI Medical Image Diagnosis For NeuroDegenerative Diseases")
     st.write("Upload a brain scan image (JPG, PNG) to get a prediction of possible neurodegenerative disease.")
@@ -99,8 +109,6 @@ if page == "Home":
                     st.subheader("🧾 Diagnosis Result")
                     st.write(f"**Prediction:** {predicted_class}")
                     st.write(f"**Confidence:** {predicted_confidence:.2f}%")
-                    # stoggle("🔍 See All Class Confidence Scores", 
-                    #         "\n".join([f"{label}: {confidence_scores[idx]*100:.2f}%" for idx, label in enumerate(CLASS_NAMES)]),)
 
                     with st.expander("🔍 See All Class Confidence Scores"):
                         for idx, label in enumerate(CLASS_NAMES):
@@ -155,7 +163,10 @@ elif page == "Image Diagnosis":
                         st.image(heatmap_overlay, caption="Grad-CAM Overlay", use_container_width=True)
 
                     with expl_col:
-                        st.info(generate_explanation(st.session_state.predicted_class, st.session_state.predicted_confidence, st.session_state.confidence_scores))
+                        st.session_state.explanation = generate_explanation(st.session_state.predicted_class,
+                                                                             st.session_state.predicted_confidence,
+                                                                               st.session_state.confidence_scores)
+                        st.info(st.session_state.explanation)
 
                 except Exception as e:
                     st.error(f"🚨 Grad-CAM generation failed: {e}")
@@ -171,6 +182,142 @@ elif page == "Image Diagnosis":
                 del st.session_state[key]
             st.rerun()
 
+elif page == "Medical Report":
+    st.title("📄 Medical Report Generation")
+    st.write("Create and download comprehensive diagnostic reports")
+    st.markdown("_____")
+    
+    # Check if we have all necessary data for PDF generation
+    if (st.session_state.original_image is not None and
+        st.session_state.predicted_class is not None and
+        st.session_state.predicted_confidence is not None and
+        st.session_state.confidence_scores is not None and
+        st.session_state.explanation is not None and
+        st.session_state.img_for_overlay is not None):
+        
+        # Display current analysis summary
+        st.subheader("📊 Current Analysis Summary")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("Predicted Condition", st.session_state.predicted_class)
+        
+        with col2:
+            st.metric("Confidence Level", f"{st.session_state.predicted_confidence:.2f}%")
+        
+        with col3:
+            st.metric("Analysis Status", "Complete ✅")
+        
+        # Show preview of images
+        st.subheader("🖼️ Diagnostic Images Preview")
+        preview_col1, preview_col2 = st.columns(2)
+        
+        with preview_col1:
+            st.image(st.session_state.original_image, caption="Original Brain Scan", use_container_width=True)
+        
+        with preview_col2:
+            st.image(st.session_state.img_for_overlay, caption="Grad-CAM Analysis", use_container_width=True)
+        
+        # Report generation form
+        st.markdown("---")
+        st.subheader("📝 Report Information")
+        
+
+        with st.form("report_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                patient_name = st.text_input("Patient Name", value="Anonymous Patient", help="Enter patient's name or leave as anonymous")
+                doctor_name = st.text_input("Doctor/Institution Name", value="AI Diagnostic System", help="Name of the diagnosing physician or institution")
+            
+            with col2:
+                report_id = st.text_input("Report ID (Optional)", value="", help="Leave empty for auto-generation")
+                additional_notes = st.text_area("Additional Notes (Optional)", value="", help="Any additional clinical notes or observations")
+            
+            # Form submission
+            generate_report = st.form_submit_button("🔄 Generate Medical Report", type="primary")
+
+
+        if generate_report:
+            with st.spinner("Generating comprehensive medical report..."):
+                try:
+                    # Add additional notes to explanation if provided
+                    full_explanation = st.session_state.explanation
+                    if additional_notes.strip():
+                        full_explanation += f"\n\nAdditional Clinical Notes:\n{additional_notes}"
+                    
+                    pdf_bytes = generate_medical_report_pdf(
+                        original_image=st.session_state.original_image,
+                        heatmap_overlay=st.session_state.img_for_overlay,
+                        predicted_class=st.session_state.predicted_class,
+                        predicted_confidence=st.session_state.predicted_confidence,
+                        confidence_scores=st.session_state.confidence_scores,
+                        explanation_text=full_explanation,
+                        patient_name=patient_name if patient_name else "Anonymous Patient",
+                        doctor_name=doctor_name,
+                        report_id=report_id if report_id else None
+                    )
+                    
+                    # Store PDF in session state
+                    st.session_state.pdf_report = pdf_bytes
+                    
+                    st.success("✅ Medical report generated successfully!")
+
+                    # Safe file name
+                    safe_patient_name = patient_name.replace(' ', '_').replace('/', '_').replace('\\', '_')
+                    safe_condition = st.session_state.predicted_class.replace(' ', '_').replace('/', '_').replace('\\', '_')
+                    filename = f"neurological_report_{safe_patient_name}_{safe_condition}.pdf"
+
+                    # Show report details
+                    st.info(f"📄 Report generated for: {patient_name}")
+                    st.info(f"🏥 Institution: {doctor_name}")
+                    st.info(f"📅 Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
+
+                except Exception as e:
+                    st.error(f"🚨 PDF generation failed: {e}")
+                    st.error("Please check if all required libraries are installed (reportlab)")
+
+        # --- DOWNLOAD BUTTON OUTSIDE FORM ---
+        if "pdf_report" in st.session_state:
+            st.download_button(
+                label="📥 Download PDF Report",
+                data=st.session_state.pdf_report,
+                mime="application/pdf"
+            )
+    
+    elif st.session_state.original_image is not None and st.session_state.predicted_class is not None:
+        # Have basic analysis but missing Grad-CAM
+        st.warning("⚠️ Basic diagnosis available, but Grad-CAM analysis is required for complete report generation.")
+        st.info("💡 Please go to the 'Image Diagnosis' page and generate Grad-CAM explanation first.")
+        
+        # Show what we have
+        st.subheader("📊 Available Analysis")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.image(st.session_state.original_image, caption="Uploaded Brain Scan", use_container_width=True)
+        
+        with col2:
+            st.metric("Predicted Condition", st.session_state.predicted_class)
+            st.metric("Confidence Level", f"{st.session_state.predicted_confidence:.2f}%")
+            
+        if st.button("🔍 Go to Image Diagnosis"):
+            st.switch_page("Image Diagnosis")  
+    
+    else:
+        st.warning("⚠️ No diagnostic data available for report generation.")
+        st.info("💡 Please complete the following steps:")
+        st.markdown("""
+        1. **Upload Image**: Go to the Home page and upload a brain scan
+        2. **Get Diagnosis**: The AI will analyze and provide predictions
+        3. **Generate Grad-CAM**: Go to Image Diagnosis page for visual explanation
+        4. **Create Report**: Return here to generate and download your report
+        """)
+        
+        if st.button("🏠 Go to Home Page"):
+            st.experimental_set_query_params(page="Home")
+            st.rerun()
 
 st.markdown("_____")
 st.markdown("""
