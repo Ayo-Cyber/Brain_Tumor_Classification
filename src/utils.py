@@ -12,6 +12,16 @@ from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.layers import GlobalAveragePooling2D, Dense, Dropout, BatchNormalization
 from tensorflow.keras.models import Model
 from google import genai
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as ReportLabImage, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+import tempfile
+from datetime import datetime
+import io
+from PIL import Image
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 BATCH_SIZE = 32
@@ -215,3 +225,263 @@ def load_selected_model():
     except Exception as e:
         st.error(f"🚨 Error loading model: {e}")
         return None
+
+
+# artefacts in a pdf
+
+def generate_medical_report_pdf(
+    original_image,
+    heatmap_overlay, 
+    predicted_class,
+    predicted_confidence,
+    confidence_scores,
+    explanation_text,
+    patient_name="Patient",
+    doctor_name="AI Diagnostic System",
+    report_id=None
+):
+    """
+    Generate a comprehensive medical diagnosis report as PDF
+    
+    Args:
+        original_image: PIL Image object of the original brain scan
+        heatmap_overlay: PIL Image object of the Grad-CAM overlay
+        predicted_class: String of the predicted diagnosis
+        predicted_confidence: Float of prediction confidence (0-100)
+        confidence_scores: Array of all class confidence scores
+        explanation_text: String containing the medical explanation
+        patient_name: String of patient name (default: "Patient")
+        doctor_name: String of diagnosing doctor/system (default: "AI Diagnostic System")
+        report_id: String of report ID (auto-generated if None)
+    
+    Returns:
+        bytes: PDF file content as bytes
+    """
+    
+    # Create a temporary file for the PDF
+    buffer = io.BytesIO()
+    
+    # Create the PDF document
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=72,
+        leftMargin=72,
+        topMargin=72,
+        bottomMargin=18
+    )
+    
+    # Get styles
+    styles = getSampleStyleSheet()
+    
+    # Create custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        spaceAfter=30,
+        alignment=TA_CENTER,
+        textColor=colors.darkblue
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Heading2'],
+        fontSize=16,
+        spaceAfter=12,
+        textColor=colors.darkblue
+    )
+    
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontSize=11,
+        spaceAfter=12,
+        alignment=TA_JUSTIFY
+    )
+    
+    # Story to hold all elements
+    story = []
+    
+    # Header
+    story.append(Paragraph("NEUROLOGICAL DIAGNOSTIC REPORT", title_style))
+    story.append(Spacer(1, 20))
+    
+    # Report metadata table
+    if report_id is None:
+        report_id = f"NDR-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    
+    metadata = [
+        ['Report ID:', report_id],
+        ['Patient Name:', patient_name],
+        ['Date & Time:', datetime.now().strftime('%B %d, %Y at %I:%M %p')],
+        ['Diagnostic System:', doctor_name],
+        ['Report Type:', 'AI-Assisted Neuroimaging Analysis']
+    ]
+    
+    metadata_table = Table(metadata, colWidths=[2*inch, 4*inch])
+    metadata_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    story.append(metadata_table)
+    story.append(Spacer(1, 30))
+    
+    # Primary Diagnosis Section
+    story.append(Paragraph("PRIMARY DIAGNOSIS", subtitle_style))
+    
+    diagnosis_data = [
+        ['Predicted Condition:', predicted_class],
+        ['Confidence Level:', f"{predicted_confidence:.2f}%"],
+        ['Diagnostic Method:', 'Deep Learning CNN Analysis with Grad-CAM Visualization']
+    ]
+    
+    diagnosis_table = Table(diagnosis_data, colWidths=[2*inch, 4*inch])
+    diagnosis_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.lightblue),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    story.append(diagnosis_table)
+    story.append(Spacer(1, 20))
+    
+    # Confidence Scores Section
+    story.append(Paragraph("DETAILED CONFIDENCE ANALYSIS", subtitle_style))
+    
+    # Assuming CLASS_NAMES is available or passed
+    # You might need to import CLASS_NAMES or pass it as a parameter
+    try:
+        from src.utils import CLASS_NAMES
+        confidence_data = [['Condition', 'Confidence Score']]
+        for idx, class_name in enumerate(CLASS_NAMES):
+            confidence_data.append([class_name, f"{confidence_scores[idx]*100:.2f}%"])
+    except ImportError:
+        # Fallback if CLASS_NAMES not available
+        confidence_data = [['Condition', 'Confidence Score']]
+        for idx, score in enumerate(confidence_scores):
+            confidence_data.append([f"Class {idx+1}", f"{score*100:.2f}%"])
+    
+    confidence_table = Table(confidence_data, colWidths=[3*inch, 2*inch])
+    confidence_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
+    ]))
+    
+    story.append(confidence_table)
+    story.append(Spacer(1, 30))
+    
+    # Medical Images Section
+    story.append(Paragraph("DIAGNOSTIC IMAGING", subtitle_style))
+    
+    # Save images temporarily for inclusion in PDF
+    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_orig:
+        original_image.save(tmp_orig.name)
+        orig_path = tmp_orig.name
+    
+    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_heat:
+        if isinstance(heatmap_overlay, np.ndarray):
+            Image.fromarray(heatmap_overlay).save(tmp_heat.name)
+        else:
+            heatmap_overlay.save(tmp_heat.name)
+        heat_path = tmp_heat.name
+    
+    # Create image table
+    image_table_data = [
+        [ReportLabImage(orig_path, width=2.5*inch, height=2.5*inch), 
+         ReportLabImage(heat_path, width=2.5*inch, height=2.5*inch)],
+        ['Original Brain Scan', 'Grad-CAM Analysis Overlay']
+    ]
+    
+    image_table = Table(image_table_data, colWidths=[3*inch, 3*inch])
+    image_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
+        ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 1), (-1, 1), 10),
+        ('BOTTOMPADDING', (0, 1), (-1, 1), 12),
+    ]))
+    
+    story.append(image_table)
+    story.append(Spacer(1, 30))
+    
+    # Medical Explanation Section
+    story.append(Paragraph("CLINICAL INTERPRETATION", subtitle_style))
+    story.append(Paragraph(explanation_text, normal_style))
+    story.append(Spacer(1, 20))
+    
+    # Disclaimer Section
+    story.append(Paragraph("IMPORTANT DISCLAIMER", subtitle_style))
+    disclaimer_text = """
+    This report is generated by an AI-assisted diagnostic system and is intended for research and 
+    educational purposes only. It should NOT be used as a substitute for professional medical advice, 
+    diagnosis, or treatment. Always seek the advice of qualified healthcare providers with any questions 
+    regarding medical conditions. The AI system's predictions are based on pattern recognition from 
+    training data and may not account for all clinical factors relevant to individual cases.
+    """
+    story.append(Paragraph(disclaimer_text, normal_style))
+    
+    # Footer
+    story.append(Spacer(1, 30))
+    footer_text = f"Report generated on {datetime.now().strftime('%B %d, %Y at %I:%M %p')} | AI Neuro Diagnosis System"
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        alignment=TA_CENTER,
+        textColor=colors.grey
+    )
+    story.append(Paragraph(footer_text, footer_style))
+    
+    # Build PDF
+    doc.build(story)
+    
+    # Cleanup temporary files
+    try:
+        os.unlink(orig_path)
+        os.unlink(heat_path)
+    except:
+        pass
+    
+    # Get PDF bytes
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    
+    return pdf_bytes
+
+def save_report_to_streamlit(pdf_bytes, filename="neurological_diagnostic_report.pdf"):
+    """
+    Helper function to provide download button in Streamlit
+    
+    Args:
+        pdf_bytes: PDF content as bytes
+        filename: Desired filename for download
+    
+    Returns:
+        Streamlit download button
+    """
+    
+    return st.download_button(
+        label="📄 Download Medical Report (PDF)",
+        data=pdf_bytes,
+        file_name=filename,
+        mime="application/pdf",
+        help="Click to download the complete diagnostic report as PDF"
+    )
