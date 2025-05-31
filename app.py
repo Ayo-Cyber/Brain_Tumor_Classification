@@ -37,6 +37,8 @@ if 'original_image' not in st.session_state:
     st.session_state.original_image = None
 if 'explanation' not in st.session_state:
     st.session_state.explanation = None
+if 'page' not in st.session_state:
+    st.session_state.page = None
 
 # Sidebar
 with st.sidebar:
