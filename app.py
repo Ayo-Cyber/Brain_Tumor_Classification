@@ -19,6 +19,11 @@ import os
 
 # Page Configuration
 st.set_page_config(page_title="AI Neuro Diagnosis", page_icon="🩺", layout="wide")
+# if st.button("🔍 Go to Image Diagnosis"):
+#     st.session_state.page = "Image Diagnosis"
+#     st.rerun()
+
+
 
 # Initialize session state variables if they don't exist
 if 'temp_path' not in st.session_state:
@@ -38,13 +43,22 @@ if 'original_image' not in st.session_state:
 if 'explanation' not in st.session_state:
     st.session_state.explanation = None
 if 'page' not in st.session_state:
-    st.session_state.page = None
+    st.session_state.page = "Home"
 
 # Sidebar
 with st.sidebar:
     st.title("Navigation")
-    page = st.sidebar.radio("Select Page", ["Home" , "Image Diagnosis", "Medical Report"])
-    dark_mode = st.toggle("Dark Mode")
+    page = st.sidebar.radio(
+    "Select Page", 
+    ["Home", "Image Diagnosis", "Medical Report"],
+    index=["Home", "Image Diagnosis", "Medical Report"].index(st.session_state.page)
+    )
+    dark_mode = st.sidebar.toggle("Dark Mode")
+
+
+if page != st.session_state.page:
+    st.session_state.page = page
+    st.rerun()
 
 # Dark mode style
 if dark_mode:
@@ -55,7 +69,7 @@ if dark_mode:
         </style>
     """, unsafe_allow_html=True)
 
-if page == "Home":
+if st.session_state.page == "Home":
     # session state for home pag
     # Header
     st.title("🧠 AI Medical Image Diagnosis For NeuroDegenerative Diseases")
@@ -135,7 +149,7 @@ if page == "Home":
                         for idx, label in enumerate(CLASS_NAMES):
                             st.write(f"{label}: {st.session_state.confidence_scores[idx]*100:.2f}%")
 
-elif page == "Image Diagnosis":
+elif st.session_state.page == "Image Diagnosis":
     st.title("🧠 AI Medical Image Diagnosis For NeuroDegenerative Diseases")
     st.write("Perform Explainable Image Diagnosis on Brain Scans")
     st.markdown("_____")
@@ -184,7 +198,7 @@ elif page == "Image Diagnosis":
                 del st.session_state[key]
             st.rerun()
 
-elif page == "Medical Report":
+elif st.session_state.page == "Medical Report":
     st.title("📄 Medical Report Generation")
     st.write("Create and download comprehensive diagnostic reports")
     st.markdown("_____")
@@ -318,7 +332,7 @@ elif page == "Medical Report":
         """)
         
         if st.button("🏠 Go to Home Page"):
-            st.experimental_set_query_params(page="Home")
+            st.session_state.page = "Home"
             st.rerun()
 
 st.markdown("_____")
