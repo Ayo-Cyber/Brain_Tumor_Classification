@@ -695,3 +695,42 @@ def should_proceed_with_analysis(quality_results, min_score=40):
         bool: Whether to proceed with analysis
     """
     return quality_results['overall_score'] >= min_score
+
+def create_dark_theme():
+    """Create dark theme configuration"""
+    config_dir = ".streamlit"
+    config_file = os.path.join(config_dir, "config.toml")
+    
+    # Create .streamlit directory if it doesn't exist
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir)
+    
+    # Dark theme configuration
+    dark_config = """[theme]
+primaryColor = "#ff4b4b"
+backgroundColor = "#0e1117"
+secondaryBackgroundColor = "#262730"
+textColor = "#fafafa"
+font = "sans serif"
+"""
+    
+    with open(config_file, 'w') as f:
+        f.write(dark_config)
+
+def create_light_theme():
+    """Create light theme configuration"""
+    config_dir = ".streamlit"
+    config_file = os.path.join(config_dir, "config.toml")
+    
+    # Create .streamlit directory if it doesn't exist
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir)
+    
+    # Light theme configuration
+    light_config = """[theme]
+primaryColor = "#ff4b4b"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#262730"
+font = "sans serif"
+"""

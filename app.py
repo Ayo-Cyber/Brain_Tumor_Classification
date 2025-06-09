@@ -12,10 +12,12 @@ from src.utils import (generate_explanation ,
                           load_and_preprocess_image ,
                             load_selected_model,
                               generate_medical_report_pdf,
-                                save_report_to_streamlit,
-                                assess_image_quality,  # ADD THIS
-                                display_quality_assessment,  # ADD THIS
-                                should_proceed_with_analysis)  # ADD THIS
+                                assess_image_quality, 
+                                display_quality_assessment,  
+                                should_proceed_with_analysis, 
+                                create_dark_theme,
+                                create_light_theme) 
+from src.help import help_tutorial 
 import tempfile
 from datetime import datetime
 import os
@@ -49,17 +51,24 @@ if 'quality_approved' not in st.session_state:
 # Sidebar
 with st.sidebar:
     st.title("Navigation")
-    page = st.sidebar.radio("Select Page", ["Home" , "Image Diagnosis", "Medical Report"])
-    dark_mode = st.toggle("Dark Mode")
+    page = st.sidebar.radio("Select Page", ["Home" , "Image Diagnosis", "Medical Report", "Help & Tutorial"])
 
-# Dark mode style
-if dark_mode:
-    st.markdown("""
-        <style>
-        body { background-color: #222; color: white; }
-        .stTextInput input { background-color: #444; color: white; }
-        </style>
-    """, unsafe_allow_html=True)
+    dark_mode = st.toggle("Dark Mode")
+    # Apply theme based on toggle
+    if dark_mode:
+        create_dark_theme()
+        st.info("🌙 Dark mode enabled! Refresh the page to see changes.")
+    else:
+        create_light_theme()
+        if st.session_state.get('was_dark_mode', False):
+            st.info("☀️ Light mode enabled! Refresh the page to see changes.")
+
+    # Store the previous state
+    st.session_state.was_dark_mode = dark_mode
+
+# Add a refresh button for immediate theme application
+    if st.sidebar.button("🔄 Apply Theme"):
+        st.rerun()
 
 if page == "Home":
     # Header
@@ -426,6 +435,9 @@ elif page == "Medical Report":
         if st.button("🏠 Go to Home Page"):
             st.experimental_set_query_params(page="Home")
             st.rerun()
+
+elif page== "Help & Tutorial":
+    help_tutorial()
 
 st.markdown("_____")
 st.markdown("""
