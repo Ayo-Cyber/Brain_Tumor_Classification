@@ -22,8 +22,21 @@ import tempfile
 from datetime import datetime
 import io
 from PIL import Image
+from dotenv import load_dotenv
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+load_dotenv()
+# GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+
+# Validate keys are present
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY not found in environment variables")
+if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
+    raise ValueError("AWS credentials not found in environment variables")
+
 BATCH_SIZE = 32
 IMAGE_SIZE = (224, 224)
 SEED = 42
@@ -238,6 +251,7 @@ def generate_medical_report_pdf(
     explanation_text,
     patient_name="Patient",
     doctor_name="AI Diagnostic System",
+    image_quality_report=None,
     report_id=None
 ):
     """
@@ -421,6 +435,29 @@ def generate_medical_report_pdf(
     
     story.append(image_table)
     story.append(Spacer(1, 30))
+
+    story.append(Paragraph("Image Quality Assessment", subtitle_style))
+    story.append(Paragraph(
+        f"Overall Quality Score: {image_quality_report['overall_score']}/100",
+        normal_style
+    ))
+    story.append(Paragraph(
+        f"Status: {image_quality_report['status']}",
+        normal_style
+    ))
+    story.append(Paragraph(
+        f"Resolution: {image_quality_report['resolution']}",
+        normal_style
+    ))
+
+    story.append(Spacer(1, 20))
+    if image_quality_report['recommendations']:
+        story.append(Paragraph("Recommendations for Image Quality Improvement:", subtitle_style))
+        for rec in image_quality_report['recommendations']:
+            story.append(Paragraph(f"• {rec}", normal_style))
+    else:
+        story.append(Paragraph("No specific recommendations for image quality improvement.", normal_style))
+    story.append(Spacer(1, 20))
     
     # Medical Explanation Section
     story.append(Paragraph("CLINICAL INTERPRETATION", subtitle_style))
@@ -487,3 +524,174 @@ def save_report_to_streamlit(pdf_bytes, filename="neurological_diagnostic_report
         )
     else:
         st.error("PDF data is not in bytes format. Cannot offer download.")
+
+
+def assess_image_quality(image_array, min_resolution=(224, 224)):
+    """
+    Comprehensive image quality assessment for medical imaging
+    
+    Args:
+        image_array: numpy array of the image
+        min_resolution: tuple of minimum required (width, height)
+    
+    Returns:
+        dict: Quality assessment results
+    """
+    # Convert to grayscale if RGB
+    if len(image_array.shape) == 3:
+        gray = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)
+    else:
+        gray = image_array.copy()
+    
+    # 1. Resolution check
+    height, width = gray.shape[:2]
+    resolution_adequate = width >= min_resolution[0] and height >= min_resolution[1]
+    
+    # 2. Contrast assessment (standard deviation)
+    contrast_score = np.std(gray)
+    
+    # 3. Brightness assessment
+    brightness = np.mean(gray)
+    brightness_optimal = 50 <= brightness <= 200  # Good range for medical images
+    
+    # 4. Blur detection using Laplacian variance
+    blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
+    is_sharp = blur_score > 100  # Threshold for sharpness
+    
+    # 5. Dynamic range (histogram spread)
+    hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
+    dynamic_range = np.sum(hist > 0)  # Number of different intensity levels
+    
+    # 6. Overall quality score calculation
+    quality_factors = {
+        'resolution': 100 if resolution_adequate else 0,
+        'contrast': min(100, (contrast_score / 255) * 100),
+        'brightness': 100 if brightness_optimal else max(0, 100 - abs(brightness - 125)),
+        'sharpness': min(100, blur_score / 10),
+        'dynamic_range': min(100, (dynamic_range / 256) * 100)
+    }
+    
+    # Weighted average
+    weights = {'resolution': 0.25, 'contrast': 0.25, 'brightness': 0.20, 'sharpness': 0.20, 'dynamic_range': 0.10}
+    overall_score = sum(quality_factors[key] * weights[key] for key in weights)
+    
+    # Determine status and recommendations
+    if overall_score >= 80:
+        status = "Excellent"
+        color = "green"
+        recommendations = ["Image quality is optimal for analysis"]
+    elif overall_score >= 60:
+        status = "Good"
+        color = "blue"
+        recommendations = []
+    elif overall_score >= 40:
+        status = "Fair"
+        color = "orange"
+        recommendations = []
+    else:
+        status = "Poor"
+        color = "red"
+        recommendations = []
+    
+    # Add specific recommendations
+    if not resolution_adequate:
+        recommendations.append(f"📐 Increase resolution (current: {width}x{height}, minimum: {min_resolution[0]}x{min_resolution[1]})")
+    
+    if contrast_score < 30:
+        recommendations.append("🔳 Improve contrast - image appears too flat")
+    
+    if not brightness_optimal:
+        if brightness < 50:
+            recommendations.append("💡 Image too dark - increase lighting")
+        else:
+            recommendations.append("☀️ Image too bright - reduce lighting")
+    
+    if not is_sharp:
+        recommendations.append("📷 Image appears blurry - ensure camera is in focus")
+    
+    if dynamic_range < 100:
+        recommendations.append("🎨 Limited tonal range - check exposure settings")
+    
+    return {
+        'overall_score': round(overall_score, 1),
+        'status': status,
+        'color': color,
+        'resolution': f"{width}x{height}",
+        'resolution_adequate': resolution_adequate,
+        'contrast_score': round(contrast_score, 1),
+        'brightness': round(brightness, 1),
+        'brightness_optimal': brightness_optimal,
+        'blur_score': round(blur_score, 1),
+        'is_sharp': is_sharp,
+        'dynamic_range': dynamic_range,
+        'quality_factors': {k: round(v, 1) for k, v in quality_factors.items()},
+        'recommendations': recommendations
+    }
+
+def display_quality_assessment(quality_results):
+    """
+    Display quality assessment results in Streamlit
+    
+    Args:
+        quality_results: dict from assess_image_quality()
+    """
+    st.subheader("📊 Image Quality Assessment")
+    
+    # Overall score with color
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.metric(
+            label="Overall Quality Score",
+            value=f"{quality_results['overall_score']}/100",
+            delta=quality_results['status']
+        )
+    
+    # Quality status with color
+    if quality_results['color'] == 'green':
+        st.success(f"✅ Status: {quality_results['status']}")
+    elif quality_results['color'] == 'blue':
+        st.info(f"ℹ️ Status: {quality_results['status']}")
+    elif quality_results['color'] == 'orange':
+        st.warning(f"⚠️ Status: {quality_results['status']}")
+    else:
+        st.error(f"❌ Status: {quality_results['status']}")
+    
+    # Detailed metrics
+    with st.expander("📋 Detailed Quality Metrics", expanded=False):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**Technical Metrics:**")
+            st.write(f"• Resolution: {quality_results['resolution']}")
+            st.write(f"• Contrast Score: {quality_results['contrast_score']}")
+            st.write(f"• Brightness: {quality_results['brightness']}")
+            st.write(f"• Sharpness Score: {quality_results['blur_score']}")
+            st.write(f"• Dynamic Range: {quality_results['dynamic_range']}/256")
+        
+        with col2:
+            st.write("**Quality Factors:**")
+            for factor, score in quality_results['quality_factors'].items():
+                st.write(f"• {factor.title()}: {score}/100")
+    
+    # Recommendations
+    if quality_results['recommendations']:
+        st.subheader("💡 Recommendations for Better Quality")
+        for rec in quality_results['recommendations']:
+            st.write(f"• {rec}")
+    
+    # Warning for poor quality
+    if quality_results['overall_score'] < 50:
+        st.error("⚠️ **Important**: Low image quality may affect diagnostic accuracy. Consider retaking the image with better conditions.")
+
+def should_proceed_with_analysis(quality_results, min_score=40):
+    """
+    Determine if analysis should proceed based on quality
+    
+    Args:
+        quality_results: dict from assess_image_quality()
+        min_score: minimum acceptable quality score
+    
+    Returns:
+        bool: Whether to proceed with analysis
+    """
+    return quality_results['overall_score'] >= min_score
