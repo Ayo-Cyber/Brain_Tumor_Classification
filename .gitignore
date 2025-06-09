@@ -6,3 +6,4 @@ mlruns/
 *.keras
 __pycache__
 .env
+test/*
