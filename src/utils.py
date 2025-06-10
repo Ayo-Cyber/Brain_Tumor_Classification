@@ -6,11 +6,7 @@ import boto3
 import streamlit as st
 from tensorflow.keras.preprocessing import image as keras_image
 from tensorflow.keras.applications.resnet50 import preprocess_input
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import load_model
-from tensorflow.keras.applications import ResNet50
-from tensorflow.keras.layers import GlobalAveragePooling2D, Dense, Dropout, BatchNormalization
-from tensorflow.keras.models import Model
 from google import genai
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, A4
@@ -241,7 +237,6 @@ def load_selected_model():
 
 
 # artefacts in a pdf
-
 def generate_medical_report_pdf(
     original_image,
     heatmap_overlay, 
