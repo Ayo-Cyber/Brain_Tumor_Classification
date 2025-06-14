@@ -53,6 +53,7 @@ if 'quality_results' not in st.session_state:
 if 'quality_approved' not in st.session_state:
     st.session_state.quality_approved = False
 
+
 # Sidebar
 with st.sidebar:
     st.title("Navigation")
@@ -75,7 +76,7 @@ with st.sidebar:
     if st.sidebar.button("🔄 Apply Theme"):
         st.rerun()
 
-if st.session_state.page == "Home":
+if page == "Home":
     # session state for home pag
     # Header
     st.title("🧠 AI Medical Image Diagnosis For NeuroDegenerative Diseases")
@@ -210,7 +211,7 @@ if st.session_state.page == "Home":
                         for idx, label in enumerate(CLASS_NAMES):
                             st.write(f"{label}: {st.session_state.confidence_scores[idx]*100:.2f}%")
 
-elif st.session_state.page == "Image Diagnosis":
+elif page == "Image Diagnosis":
     st.title("🧠 AI Medical Image Diagnosis For NeuroDegenerative Diseases")
     st.write("Perform Explainable Image Diagnosis on Brain Scans")
     st.markdown("_____")
@@ -281,7 +282,7 @@ elif st.session_state.page == "Image Diagnosis":
                 del st.session_state[key]
             st.rerun()
 
-elif st.session_state.page == "Medical Report":
+elif page == "Medical Report":
     st.title("📄 Medical Report Generation")
     st.write("Create and download comprehensive diagnostic reports")
     st.markdown("_____")
