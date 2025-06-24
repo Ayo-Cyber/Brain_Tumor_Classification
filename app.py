@@ -52,12 +52,14 @@ if 'quality_results' not in st.session_state:
     st.session_state.quality_results = None
 if 'quality_approved' not in st.session_state:
     st.session_state.quality_approved = False
+if 'page' not in st.session_state:
+    st.session_state.page = "Home"
 
 
 # Sidebar
 with st.sidebar:
     st.title("Navigation")
-    page = st.sidebar.radio("Select Page", ["Home" , "Image Diagnosis", "Medical Report", "Help & Tutorial"])
+    st.session_state.page = st.sidebar.radio("Select Page", ["Home" , "Image Diagnosis", "Medical Report", "Help & Tutorial"])
 
     dark_mode = st.toggle("Dark Mode")
     # Apply theme based on toggle
@@ -76,7 +78,7 @@ with st.sidebar:
     if st.sidebar.button("🔄 Apply Theme"):
         st.rerun()
 
-if page == "Home":
+if st.session_state.page == "Home":
     # session state for home pag
     # Header
     st.title("🧠 AI Medical Image Diagnosis For NeuroDegenerative Diseases")
@@ -211,7 +213,7 @@ if page == "Home":
                         for idx, label in enumerate(CLASS_NAMES):
                             st.write(f"{label}: {st.session_state.confidence_scores[idx]*100:.2f}%")
 
-elif page == "Image Diagnosis":
+elif st.session_state.page == "Image Diagnosis":
     st.title("🧠 AI Medical Image Diagnosis For NeuroDegenerative Diseases")
     st.write("Perform Explainable Image Diagnosis on Brain Scans")
     st.markdown("_____")
@@ -282,7 +284,7 @@ elif page == "Image Diagnosis":
                 del st.session_state[key]
             st.rerun()
 
-elif page == "Medical Report":
+elif st.session_state.page == "Medical Report":
     st.title("📄 Medical Report Generation")
     st.write("Create and download comprehensive diagnostic reports")
     st.markdown("_____")
@@ -426,8 +428,9 @@ elif page == "Medical Report":
             st.metric("Confidence Level", f"{st.session_state.predicted_confidence:.2f}%")
             
         if st.button("🔍 Go to Image Diagnosis"):
-            st.switch_page("Image Diagnosis")  
-    
+            st.session_state.page = "Image Diagnosis"
+            st.experimental_rerun()
+
     else:
         st.warning("⚠️ No diagnostic data available for report generation.")
         st.info("💡 Please complete the following steps:")
@@ -443,7 +446,7 @@ elif page == "Medical Report":
             st.session_state.page = "Home"
             st.rerun()
 
-elif page== "Help & Tutorial":
+elif st.session_state.page== "Help & Tutorial":
     help_tutorial()
 
 st.markdown("_____")
