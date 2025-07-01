@@ -162,7 +162,7 @@ jobs:
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_STR: ${{ secrets.DB_STR }}
           DB_NAME: ${{ secrets.DB_NAME }}
-          SVC_NAME: brain-tumor
+          SVC_NAME: backend
           GCR_REGION: us-central1
           PROJECT: tst-proj-456315
           REPO: brain-tumor
