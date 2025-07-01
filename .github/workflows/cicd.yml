@@ -152,8 +152,16 @@ jobs:
       
       - name: Deploy cloud run
         run : |
-          gcloud run deploy $SVC_NAME --image $GCR_REGION-docker.pkg.dev/$PROJECT/$REPO/$IMG:latest --region $GCR_REGION --platform managed --allow-unauthenticated
+          gcloud run deploy $SVC_NAME --image $GCR_REGION-docker.pkg.dev/$PROJECT/$REPO/$IMG:latest \
+          --region $GCR_REGION --platform managed --allow-unauthenticated --set-env-vars DB_CLUSTER=$DB_CLUSTER \
+          --set-env-vars DB_PASSWORD=$DB_PASSWORD --set-env-vars DB_USERNAME=$DB_USERNAME --set-env-vars DB_STR=$DB_STR \
+          --set-env-vars DB_NAME=$DB_NAME
         env:
+          DB_CLUSTER: ${{ secrets.DB_CLUSTER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_STR: ${{ secrets.DB_STR }}
+          DB_NAME: ${{ secrets.DB_NAME }}
           SVC_NAME: brain-tumor
           GCR_REGION: us-central1
           PROJECT: tst-proj-456315
